@@ -55,13 +55,13 @@ int init_parent_work(void *__info, int N) {
     while (child_i < N) {
         Info info = {.fork_id = 0, .N = N};
 
-        for(int i = 0; i < 10; i++) {
-            for(int j = 0; j < 10; j++) {
-                for(int k = 0; k < 2; k++) {
-                    info.pm[i][j][k] = pm[i][j][k];
-                }
-            }
-        }
+        // for(int i = 0; i < 10; i++) {
+        //     for(int j = 0; j < 10; j++) {
+        //         for(int k = 0; k < 2; k++) {
+        //             info.pm[i][j][k] = pm[i][j][k];
+        //         }
+        //     }
+        // }
         Message started_msg;
 
         receive(&info, child_i, &started_msg);
@@ -109,7 +109,7 @@ void do_parent_work(void *__info, int N) {
     local_id iterator = 0;
     while (iterator < pipe_info.N) {
         if (iterator != pipe_info.fork_id) {
-            write(pipe_info.pm[pipe_info.fork_id][iterator][1], &stop_msg, message_size);
+            write(writer[pipe_info.fork_id][iterator], &stop_msg, message_size);
         }
         
         iterator++;

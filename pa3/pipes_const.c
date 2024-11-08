@@ -10,3 +10,5 @@ FILE *plf;
 Info pipe_info;
 
 int pm[10][10][2];
+int reader[10][10];
+int writer[10][10];

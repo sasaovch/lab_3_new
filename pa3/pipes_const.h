@@ -18,6 +18,8 @@ extern FILE *plf;
 extern Info pipe_info;
 
 extern int pm[10][10][2];
+extern int reader[10][10];
+extern int writer[10][10];
 // Message new_message_contructor(MessageType msg_type);
 
 #endif

@@ -28,14 +28,14 @@ void close_pipes() {
              destination++) {
             if (source != pipe_info.fork_id && destination != pipe_info.fork_id &&
                 source != destination) {
-                close(pipe_info.pm[source][destination][0]);
-                close(pipe_info.pm[source][destination][1]);
+                close(writer[source][destination]);
+                close(reader[source][destination]);
             }
             if (source == pipe_info.fork_id && destination != pipe_info.fork_id) {
-                close(pipe_info.pm[source][destination][0]);
+                close(reader[source][destination]);
             }
             if (destination == pipe_info.fork_id && source != pipe_info.fork_id) {
-                close(pipe_info.pm[source][destination][1]);
+                close(writer[source][destination]);
             }
         }
     }    
@@ -71,7 +71,7 @@ void transfer(void * parent_data, local_id src, local_id dst,
 
         size_t message_size_hs = sizeof(MessageHeader) + msg.s_header.s_payload_len;
 
-        write(pipe_info.pm[pipe_info.fork_id][src][1], &msg, message_size_hs);                
+        write(writer[pipe_info.fork_id][src], &msg, message_size_hs);                
         
         pipe_info.local_time++;
         type = receive_any(&pipe_info, &received_message);
@@ -97,7 +97,7 @@ void transfer(void * parent_data, local_id src, local_id dst,
 
         size_t message_size_hs = sizeof(MessageHeader) + msg.s_header.s_payload_len;
 
-        write(pipe_info.pm[pipe_info.fork_id][dst][1], &msg, message_size_hs);                
+        write(writer[pipe_info.fork_id][dst], &msg, message_size_hs);                
     }
 }
 
@@ -125,35 +125,52 @@ int main(int argc, char * argv[])
     fprintf(stdout, "-------------------- VERSION 1.3.2 tag:%d --------------\n", r);
     fflush(stdout);
 
-    local_id line = 0;
-    local_id column = 0;
-    int all_pipes_number = N;
-
-    while (line < all_pipes_number) {
-        column = 0;
-        while (column < all_pipes_number) {
-            if (line == column) {
-                pm[line][column][0] = -1;
-                pm[line][column][1] = -1;
-                column++;
-            } else {
-                int descriptors[2];
-                pipe(descriptors);
-
-                fcntl(descriptors[0], F_SETFL, fcntl(descriptors[0], F_GETFL, 0) | O_NONBLOCK);
-                fcntl(descriptors[1], F_SETFL, fcntl(descriptors[1], F_GETFL, 0) | O_NONBLOCK);
-
-                for (int i = 0; i < 2; i++) {
-                    pm[line][column][i] = descriptors[i]; // 0 - read and 1 - write
-                }
-
-                fprintf(plf, "Pipe %d -> %d. Fd %d -> %d\n", line, column, descriptors[0], descriptors[1]);
-                fflush(plf);
-                column++;
+    for (size_t source = 0; source < N; source++) {
+        for (size_t destination = 0; destination < N; destination++) {
+            if (source != destination) {
+                int fd[2]; pipe(fd);
+                unsigned int flags_for_read = fcntl(fd[0], F_GETFL, 0);
+                unsigned int flags_for_write = fcntl(fd[1], F_GETFL, 0);
+                if (fcntl(fd[0], F_SETFL, flags_for_read | O_NONBLOCK) < 0)
+                    exit(2);
+                if (fcntl(fd[1], F_SETFL, flags_for_write | O_NONBLOCK) < 0)
+                    exit(2);
+                reader[source][destination] = fd[0];
+                writer[source][destination] = fd[1];
+                // pipe_opened(source, destination);
             }
         }
-        line++;
     }
+
+    // local_id line = 0;
+    // local_id column = 0;
+    // int all_pipes_number = N;
+
+    // while (line < all_pipes_number) {
+    //     column = 0;
+    //     while (column < all_pipes_number) {
+    //         if (line == column) {
+    //             pm[line][column][0] = -1;
+    //             pm[line][column][1] = -1;
+    //             column++;
+    //         } else {
+    //             int descriptors[2];
+    //             pipe(descriptors);
+
+    //             fcntl(descriptors[0], F_SETFL, fcntl(descriptors[0], F_GETFL, 0) | O_NONBLOCK);
+    //             fcntl(descriptors[1], F_SETFL, fcntl(descriptors[1], F_GETFL, 0) | O_NONBLOCK);
+
+    //             for (int i = 0; i < 2; i++) {
+    //                 pm[line][column][i] = descriptors[i]; // 0 - read and 1 - write
+    //             }
+
+    //             fprintf(plf, "Pipe %d -> %d. Fd %d -> %d\n", line, column, descriptors[0], descriptors[1]);
+    //             fflush(plf);
+    //             column++;
+    //         }
+    //     }
+    //     line++;
+    // }
 
     local_id number_id = 1;
     while (number_id < N) {
@@ -180,13 +197,13 @@ int main(int argc, char * argv[])
             pipe_info.N = N;
             pipe_info.local_time = child_state.child_time;
 
-            for(int i = 0; i < 10; i++) {
-                for(int j = 0; j < 10; j++) {
-                    for(int k = 0; k < 2; k++) {
-                        pipe_info.pm[i][j][k] = pm[i][j][k];
-                    }
-                }
-            }
+            // for(int i = 0; i < 10; i++) {
+            //     for(int j = 0; j < 10; j++) {
+            //         for(int k = 0; k < 2; k++) {
+            //             pipe_info.pm[i][j][k] = pm[i][j][k];
+            //         }
+            //     }
+            // }
 
             close_pipes();
 
@@ -219,13 +236,13 @@ int main(int argc, char * argv[])
     pipe_info.fork_id = 0;
     pipe_info.N = N;
     pipe_info.local_time = 0;
-    for(int i = 0; i < 10; i++) {
-        for(int j = 0; j < 10; j++) {
-            for(int k = 0; k < 2; k++) {
-                pipe_info.pm[i][j][k] = pm[i][j][k];
-            }
-        }
-    }
+    // for(int i = 0; i < 10; i++) {
+    //     for(int j = 0; j < 10; j++) {
+    //         for(int k = 0; k < 2; k++) {
+    //             pipe_info.pm[i][j][k] = pm[i][j][k];
+    //         }
+    //     }
+    // }
     close_pipes();
 
     fprintf(elf, "-------------------- INIT PARENT 1 %d --------------\n", number_id);

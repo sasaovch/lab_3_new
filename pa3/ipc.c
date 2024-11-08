@@ -32,7 +32,7 @@ int send(void * self, local_id dst, const Message * msg) {
 
 int receive(void *self, local_id from, Message *msg) {
   Info *info = (Info *)self;
-  int fd = info->pm[from][info->fork_id][0];
+  int fd = reader[from][info->fork_id];
   
   if (read(fd, &msg->s_header, sizeof(MessageHeader)) == -1) {
     return -1;
@@ -50,10 +50,10 @@ int receive_any(void * self, Message * msg) {
     while(1) {
         for (int from = 0; from < info->N; from++) {
             if (from != process_id) {
-                if (read(pm[from][process_id][0], &msg->s_header, sizeof(MessageHeader)) > 0) {
+                if (read(reader[from][process_id], &msg->s_header, sizeof(MessageHeader)) > 0) {
                     // printf("Read\n");
                     if (msg->s_header.s_payload_len > 0){
-                        read(pm[from][process_id][0], &msg->s_payload, msg->s_header.s_payload_len);
+                        read(reader[from][process_id], &msg->s_payload, msg->s_header.s_payload_len);
                         // printf("Payload %s", msg->s_payload);
                         return msg->s_header.s_type;
                     }

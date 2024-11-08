@@ -132,7 +132,8 @@ int init_child_work(void* __child_state) {
     local_id iterator = 0;
     while (iterator < pipe_info.N) {
         if (iterator != pipe_info.fork_id) {
-            write(pipe_info.pm[pipe_info.fork_id][iterator][1], &start_msg, message_size);
+            write(writer[pipe_info.fork_id][iterator], &start_msg, sizeof(MessageHeader) + start_msg.s_header.s_payload_len);
+            // write(pipe_info.pm[pipe_info.fork_id][iterator][1], &start_msg, message_size);
         }
         
         iterator++;
@@ -289,7 +290,7 @@ void transfer_handler(void* __child_state, Message* msg) {
         // send(&pipe_info, 0, &msg_n);     
         size_t message_size = sizeof(MessageHeader) + msg_n.s_header.s_payload_len;
     
-        write(pipe_info.pm[pipe_info.fork_id][0][1], &msg_n, message_size);        
+        write(writer[pipe_info.fork_id][0], &msg_n, message_size);        
     
     } else {         
         fprintf(elf,log_transfer_out_fmt, current_time, order->s_src, order->s_amount, order->s_dst);
@@ -376,7 +377,7 @@ int handle_transfers(void* __child_state) {
     local_id iterator = 0;
     while (iterator < pipe_info.N) {
         if (iterator != pipe_info.fork_id) {
-            write(pipe_info.pm[pipe_info.fork_id][iterator][1], &done_msg, message_size);
+            write(writer[pipe_info.fork_id][iterator], &done_msg, message_size);
         }
         
         iterator++;
@@ -422,7 +423,7 @@ int handle_transfers(void* __child_state) {
     // send(&pipe_info, 0, &history_msg);
     size_t message_size_hs = sizeof(MessageHeader) + history_msg.s_header.s_payload_len;
 
-    write(pipe_info.pm[pipe_info.fork_id][0][1], &history_msg, message_size_hs);        
+    write(writer[pipe_info.fork_id][0], &history_msg, message_size_hs);        
 
 
     child_state->child_time = pipe_info.local_time;
